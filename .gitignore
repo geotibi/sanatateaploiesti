@@ -1,0 +1,22 @@
+# Dependențe și build Astro
+node_modules/
+dist/
+.astro/
+
+# Variabile de mediu (parole, chei secrete)
+.env
+.env.*
+
+# BAZA DE DATE LOCALĂ & BACKUP-URI (Confidențial GDPR & Anti-corupere)
+data/
+backups/
+*.db
+*.db-wal
+*.db-shm
+
+# STOCARE ARHIVĂ BRUTĂ (Poze originale mari)
+storage/
+
+# Fișiere sistem
+.DS_Store
+Thumbs.db
