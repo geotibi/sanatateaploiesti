@@ -1,0 +1,175 @@
+---
+interface Props {
+  mapId?: string;
+  mapSourceType: 'kmz' | 'scanned_image' | 'none';
+  kmzFilePath?: string | null;
+  mapImagePath?: string | null;
+  mapCornersJson?: string | null;
+  courseGeojson?: string | null;
+  downloadLabel?: string;
+}
+
+const {
+  mapId = `map-${Math.random().toString(36).substring(2, 9)}`,
+  mapSourceType,
+  kmzFilePath,
+  mapImagePath,
+  mapCornersJson,
+  courseGeojson,
+  downloadLabel = 'Descarcă fișierul KMZ (Google Earth)',
+} = Astro.props;
+---
+
+{mapSourceType !== 'none' && (
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <!-- Bara de control deasupra hărții -->
+    <div class="bg-slate-50 px-4 py-3 border-b border-slate-200 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <label for={`opacity-${mapId}`} class="text-xs font-semibold text-slate-700 uppercase tracking-wider">
+          Transparență Hartă Orientare:
+        </label>
+        <input
+          id={`opacity-${mapId}`}
+          type="range"
+          min="0"
+          max="1"
+          step="0.05"
+          value="0.85"
+          class="w-32 accent-emerald-600 cursor-pointer"
+        />
+        <span id={`opacity-val-${mapId}`} class="text-xs font-mono text-slate-600 w-9">85%</span>
+      </div>
+
+      {kmzFilePath && (
+        <a
+          href={kmzFilePath}
+          download
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+          {downloadLabel}
+        </a>
+      )}
+    </div>
+
+    <!-- Containerul Hărții Leaflet -->
+    <div
+      id={mapId}
+      class="w-full h-[460px] z-0"
+      data-source-type={mapSourceType}
+      data-kmz={kmzFilePath || ''}
+      data-image={mapImagePath || ''}
+      data-corners={mapCornersJson || ''}
+      data-geojson={courseGeojson || ''}
+    ></div>
+  </div>
+)}
+
+<!-- Stiluri și scripturi Leaflet + plugin leaflet-kmz -->
+<link rel="stylesheet" href="https://unpkg.com" />
+<script is:inline src="https://unpkg.com"></script>
+<script is:inline src="https://unpkg.com"></script>
+
+<script is:inline define:vars={{ mapId }}>
+  document.addEventListener('DOMContentLoaded', () => {
+    const container = document.getElementById(mapId);
+    if (!container || typeof L === 'undefined') return;
+
+    const sourceType = container.dataset.sourceType;
+    const kmzUrl = container.dataset.kmz;
+    const imageUrl = container.dataset.image;
+    const cornersRaw = container.dataset.corners;
+    const geojsonRaw = container.dataset.geojson;
+
+    // 1. Inițializăm harta centrându-ne implicit pe zona Ploiești
+    const map = L.map(mapId).setView([44.9412, 26.0225], 13);
+
+    // Straturi de bază (OpenStreetMap + Satelit Esri)
+    const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap',
+      maxZoom: 19,
+    }).addTo(map);
+
+    const satelliteLayer = L.tileLayer(
+      'https://arcgisonline.com{z}/{y}/{x}',
+      {
+        attribution: '&copy; Esri Satelit',
+        maxZoom: 19,
+      }
+    );
+
+    L.control.layers({ 'Hartă Stradală': osmLayer, 'Satelit': satelliteLayer }).addTo(map);
+
+    let orienteeringOverlay = null;
+
+    // 2. CAZUL A: Fișier KMZ din Livelox / OCAD
+    if (sourceType === 'kmz' && kmzUrl) {
+      const kmzControl = L.kmzLayer().addTo(map);
+      kmzControl.on('load', (e) => {
+        orienteeringOverlay = e.layer;
+        if (e.layer.getBounds && e.layer.getBounds().isValid()) {
+          map.fitBounds(e.layer.getBounds());
+        }
+      });
+      kmzControl.load(kmzUrl);
+    }
+
+    // 3. CAZUL B: Hartă veche scanată + calibrată manual (coordonate colțuri)
+    if (sourceType === 'scanned_image' && imageUrl && cornersRaw) {
+      try {
+        const corners = JSON.parse(cornersRaw);
+        // corners conține coordonatele [lat, lng] pentru colțurile hărții
+        const bounds = L.latLngBounds(corners);
+        orienteeringOverlay = L.imageOverlay(imageUrl, bounds, { opacity: 0.85 }).addTo(map);
+        map.fitBounds(bounds);
+      } catch (err) {
+        console.error('Eroare la parsarea coordonatelor hărții scanate:', err);
+      }
+    }
+
+    // 4. Traseul oficial sau ruta sportivului în format GeoJSON (dacă există)
+    if (geojsonRaw) {
+      try {
+        const geojsonData = JSON.parse(geojsonRaw);
+        const routeLayer = L.geoJSON(geojsonData, {
+          style: {
+            color: '#d946ef', // Mov specific orientării sportive (IOF Purple)
+            weight: 4,
+            opacity: 0.9,
+          },
+        }).addTo(map);
+
+        if (!orienteeringOverlay && routeLayer.getBounds().isValid()) {
+          map.fitBounds(routeLayer.getBounds());
+        }
+      } catch (err) {
+        console.error('Eroare la parsarea traseului GeoJSON:', err);
+      }
+    }
+
+    // 5. Controlul slider-ului de transparență
+    const slider = document.getElementById(`opacity-${mapId}`);
+    const valLabel = document.getElementById(`opacity-val-${mapId}`);
+    if (slider && valLabel) {
+      slider.addEventListener('input', (e) => {
+        const opacity = parseFloat(e.target.value);
+        valLabel.textContent = `${Math.round(opacity * 100)}%`;
+
+        if (orienteeringOverlay) {
+          if (typeof orienteeringOverlay.setOpacity === 'function') {
+            orienteeringOverlay.setOpacity(opacity);
+          } else if (orienteeringOverlay.eachLayer) {
+            // Pentru straturile KMZ care conțin multiple sub-imagini
+            orienteeringOverlay.eachLayer((subLayer) => {
+              if (typeof subLayer.setOpacity === 'function') {
+                subLayer.setOpacity(opacity);
+              }
+            });
+          }
+        }
+      });
+    }
+  });
+</script>
