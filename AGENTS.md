@@ -75,3 +75,11 @@ Te rog să îmi oferi:
 - **Actualizare AdminLTE:**
   - În managerul de galerie foto (`/admin/concursuri/[id]/foto`), adaugă un câmp de input rapid sub fiecare poză pentru a introduce numerele de concurs (`bib_numbers`) vizibile în imagine.
 
+### 8. Cerințe de Arhitectură Modulară (Clean Architecture)
+- Separă strict proiectul în 4 straturi independente:
+  1. `src/core/`: Conexiunea SQLite, schema Drizzle și scripturile de integritate/backup.
+  2. `src/services/`: Servicii pure TypeScript (`CompetitionService`, `AthleteService`, `MediaService`, `ExportService`) care conțin toată logica aplicației și interogările SQL.
+  3. `src/modules/`: Componente Astro reutilizabile și izolate (`HartaGPX`, `GalerieFoto`, `TabelClasament`, `GeneratorDiploma`, `FisaPrintA4`), separate în subfoldere `public/` și `admin/`.
+  4. `src/pages/`: Rute curate care doar apelează serviciile din `src/services/` și pasează datele către componentele din `src/modules/`. Nu scrie interogări SQL direct în fișierele `.astro` din `pages/`.
+- Centralizează toate constantele (numele clubului, căile de stocare, categoriile foto) într-un singur fișier `src/config/club.config.ts`.
+
