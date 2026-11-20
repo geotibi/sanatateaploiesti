@@ -1,0 +1,26 @@
+---
+export const prerender = false;
+
+import Layout from '../../../layouts/Layout.astro';
+import { CLUB_CONFIG } from '../../../config/club.config';
+import { CompetitionService } from '../../../services/competition.service';
+import FisaPrintA4 from '../../../modules/admin/FisaPrintA4.astro';
+
+const id = Number(Astro.params.id);
+if (!id) {
+  return Astro.redirect('/admin');
+}
+
+const competition = await CompetitionService.getCompetitionById(id);
+if (!competition) {
+  return Astro.redirect('/admin');
+}
+---
+
+<Layout title={`Fișă Print A4 — ${competition.title} | ${CLUB_CONFIG.numeScurt}`}>
+  <FisaPrintA4
+    competition={competition}
+    participants={competition.participants}
+    photos={competition.photos}
+  />
+</Layout>
