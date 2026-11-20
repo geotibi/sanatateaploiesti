@@ -1,0 +1,266 @@
+---
+import { CLUB_CONFIG } from '../../config/club.config';
+
+interface ParticipantEntry {
+  result: {
+    bibNumber?: string | null;
+    raceName?: string | null;
+    category?: string | null;
+    clubAtEvent?: string | null;
+    status: string;
+    finishTime?: string | null;
+    rankOverall?: number | null;
+    rankCategory?: number | null;
+  };
+  athlete: {
+    fullName: string;
+    birthYear?: number | null;
+    gender?: string | null;
+    club?: string | null;
+  };
+}
+
+interface PhotoEntry {
+  id: number;
+  webPath: string;
+  caption?: string | null;
+  isFeatured: boolean;
+}
+
+interface Props {
+  competition: {
+    id: number;
+    slug: string;
+    title: string;
+    edition?: string | null;
+    date: string;
+    location: string;
+    distanceKm?: number | null;
+    elevationGain?: number | null;
+    description?: string | null;
+    organizerNotes?: string | null;
+  };
+  participants: ParticipantEntry[];
+  photos: PhotoEntry[];
+}
+
+const { competition, participants, photos } = Astro.props;
+
+const featuredPhotos = photos
+  .filter((p) => p.isFeatured)
+  .slice(0, CLUB_CONFIG.imageSettings.maxFeaturedPhotosPrint);
+
+const finishers = participants.filter((p) => p.result.status === 'finished');
+const dataPrintare = new Date().toLocaleDateString('ro-RO');
+---
+
+<div class="print-wrapper bg-slate-100 min-h-screen py-8 px-4 text-slate-900">
+  <div class="no-print max-w-[210mm] mx-auto mb-6 bg-slate-900 text-white px-5 py-3.5 rounded-xl shadow-md flex flex-wrap items-center justify-between gap-4">
+    <div class="flex items-center gap-3">
+      <a
+        href="/admin/concursuri"
+        class="text-xs font-medium text-slate-300 hover:text-white transition-colors"
+      >
+        &larr; Înapoi la Admin
+      </a>
+      <span class="text-slate-600">|</span>
+      <span class="text-sm font-semibold">Previzualizare Dosar Arhivă Fizică (A4)</span>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <button
+        type="button"
+        onclick="window.print()"
+        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold bg-emerald-500 text-slate-950 hover:bg-emerald-400 transition-colors cursor-pointer"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+        </svg>
+        Printează / Salvează ca PDF
+      </button>
+    </div>
+  </div>
+
+  <article class="a4-sheet max-w-[210mm] mx-auto bg-white p-[15mm] shadow-lg border border-slate-200">
+    <header class="border-b-2 border-slate-900 pb-4 mb-6 flex items-start justify-between">
+      <div>
+        <p class="text-xs font-bold uppercase tracking-widest text-emerald-700">
+          Arhiva Oficială a Competițiilor
+        </p>
+        <h1 class="text-xl font-extrabold uppercase tracking-tight text-slate-950 mt-0.5">
+          {CLUB_CONFIG.numeComplet}
+        </h1>
+        <p class="text-xs text-slate-600 mt-0.5">
+          {CLUB_CONFIG.oras}, Jud. {CLUB_CONFIG.judet}
+        </p>
+      </div>
+      <div class="text-right text-xs text-slate-600">
+        <p class="font-mono font-bold text-slate-900">COD: {competition.slug.toUpperCase()}</p>
+        <p>Data arhivării: {dataPrintare}</p>
+      </div>
+    </header>
+
+    <section class="mb-6">
+      <div class="bg-slate-50 border border-slate-300 rounded-lg p-4">
+        <h2 class="text-lg font-extrabold text-slate-950">
+          {competition.title} {competition.edition ? `— ${competition.edition}` : ''}
+        </h2>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-3 pt-3 border-t border-slate-200 text-xs">
+          <div>
+            <span class="text-slate-500 block">Data desfășurării</span>
+            <strong class="text-slate-900 text-sm">{competition.date}</strong>
+          </div>
+          <div>
+            <span class="text-slate-500 block">Locația</span>
+            <strong class="text-slate-900 text-sm">{competition.location}</strong>
+          </div>
+          <div>
+            <span class="text-slate-500 block">Caracteristici traseu</span>
+            <strong class="text-slate-900 text-sm">
+              {competition.distanceKm ? `${competition.distanceKm} km` : '-'}
+              {competition.elevationGain ? ` / +${competition.elevationGain}m` : ''}
+            </strong>
+          </div>
+          <div>
+            <span class="text-slate-500 block">Participare</span>
+            <strong class="text-slate-900 text-sm">
+              {participants.length} înscriși ({finishers.length} finișeri)
+            </strong>
+          </div>
+        </div>
+
+        {competition.description && (
+          <p class="text-xs text-slate-700 mt-3 pt-3 border-t border-slate-200 leading-relaxed">
+            {competition.description}
+          </p>
+        )}
+      </div>
+    </section>
+
+    {competition.organizerNotes && (
+      <section class="mb-6">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700 border-b border-slate-300 pb-1 mb-2">
+          Raport Post-Eveniment & Note ale Organizatorului
+        </h3>
+        <div class="text-xs text-slate-800 bg-amber-50/60 border border-amber-200 rounded p-3 whitespace-pre-line leading-relaxed">
+          {competition.organizerNotes}
+        </div>
+      </section>
+    )}
+
+    {featuredPhotos.length > 0 && (
+      <section class="mb-6 break-inside-avoid">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700 border-b border-slate-300 pb-1 mb-3">
+          Momente Reprezentative (Selecție Foto Arhivă)
+        </h3>
+        <div class="grid grid-cols-3 gap-3">
+          {featuredPhotos.map((photo) => (
+            <figure class="border border-slate-200 rounded overflow-hidden bg-slate-50">
+              <img
+                src={photo.webPath}
+                alt={photo.caption || 'Foto arhivă'}
+                class="w-full h-32 object-cover"
+              />
+              {photo.caption && (
+                <figcaption class="text-[10px] text-slate-600 px-2 py-1 truncate">
+                  {photo.caption}
+                </figcaption>
+              )}
+            </figure>
+          ))}
+        </div>
+      </section>
+    )}
+
+    <section class="mb-8">
+      <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700 border-b border-slate-300 pb-1 mb-2">
+        Lista Oficială de Participanți și Rezultate ({participants.length})
+      </h3>
+
+      {participants.length === 0 ? (
+        <p class="text-xs text-slate-500 italic py-4">Nu există participanți înregistrați pentru această ediție.</p>
+      ) : (
+        <table class="w-full text-left border-collapse text-[11px]">
+          <thead>
+            <tr class="bg-slate-100 border-y border-slate-400 text-slate-800">
+              <th class="py-1.5 px-2 font-bold">Loc</th>
+              <th class="py-1.5 px-2 font-bold">Bib</th>
+              <th class="py-1.5 px-2 font-bold">Nume și Prenume</th>
+              <th class="py-1.5 px-2 font-bold">An</th>
+              <th class="py-1.5 px-2 font-bold">Club Sportiv</th>
+              <th class="py-1.5 px-2 font-bold">Probă / Cat.</th>
+              <th class="py-1.5 px-2 font-bold">Timp</th>
+              <th class="py-1.5 px-2 font-bold">Status</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200">
+            {participants.map(({ result, athlete }) => (
+              <tr class="break-inside-avoid">
+                <td class="py-1 px-2 font-bold">
+                  {result.rankOverall ? `#${result.rankOverall}` : '-'}
+                  {result.rankCategory ? ` (C:${result.rankCategory})` : ''}
+                </td>
+                <td class="py-1 px-2 font-mono">{result.bibNumber || '-'}</td>
+                <td class="py-1 px-2 font-semibold text-slate-950">{athlete.fullName}</td>
+                <td class="py-1 px-2">{athlete.birthYear || '-'}</td>
+                <td class="py-1 px-2">{result.clubAtEvent || athlete.club || '-'}</td>
+                <td class="py-1 px-2">
+                  {result.raceName || ''} {result.category ? `(${result.category})` : ''}
+                </td>
+                <td class="py-1 px-2 font-mono font-semibold">{result.finishTime || '-'}</td>
+                <td class="py-1 px-2 uppercase text-[10px]">{result.status}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </section>
+
+    <footer class="pt-6 border-t border-slate-400 flex justify-between items-end text-xs text-slate-700 break-inside-avoid">
+      <div>
+        <p class="font-semibold">Întocmit / Arhivat de:</p>
+        <p class="mt-6 border-b border-dotted border-slate-400 w-48"></p>
+        <p class="text-[10px] text-slate-500 mt-1">Nume și semnătură responsabil arhivă</p>
+      </div>
+      <div class="text-right">
+        <p class="font-semibold">Președinte {CLUB_CONFIG.numeScurt},</p>
+        <p class="mt-6 border-b border-dotted border-slate-400 w-48 ml-auto"></p>
+        <p class="text-[10px] text-slate-500 mt-1">Semnătură și ștampilă</p>
+      </div>
+    </footer>
+  </article>
+</div>
+
+<style>
+  @media print {
+    @page {
+      size: A4 portrait;
+      margin: 12mm;
+    }
+
+    body {
+      background: white !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+
+    .no-print {
+      display: none !important;
+    }
+
+    .print-wrapper {
+      background: white !important;
+      padding: 0 !important;
+    }
+
+    .a4-sheet {
+      max-width: 100% !important;
+      width: 100% !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      box-shadow: none !important;
+      border: none !important;
+    }
+  }
+</style>
