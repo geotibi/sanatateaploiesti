@@ -65,6 +65,9 @@ Te rog să îmi oferi:
   - Afișează statistici agregate (număr total participări, total km alergați, podiumuri obținute).
   - Listează cronologic toate participările; fiecare intrare include: rezultatele (loc open, loc categorie, timp), un modal/accordion cu harta interactivă Leaflet a traseului GPX alergat la acea ediție și un buton „Descarcă Diploma”.
   - Afișează o galerie foto personalizată cu toate imaginile din `competition_photos` unde `bib_number`-ul sportivului de la acel concurs se regăsește în `bib_numbers`.
+- **Suport Fișiere Livelox KMZ (`leaflet-kmz`):**
+  - Adaugă câmpul `kmz_file_path` (nullable) în tabela `registrations_and_results` și în tabela `competitions` (pentru harta generală cu traseele oficiale).
+  - Integrează plugin-ul `leaflet-kmz` în componenta de hartă Leaflet pentru a randa direct fișierele `.kmz` descărcate din Livelox (suprapunerea hărții de orientare georeferențiate + linia rutei sportivului), incluzând un slider de opacitate/transparență peste harta de bază și un buton de descărcare a fișierului `.kmz`.
 - **Flexibilitate Galerie Foto (`competition_photos`):**
   - Câmpurile `bib_numbers` (ex: "12, 45") și `tagged_athlete_ids` (opțional, util pentru pozele de la premiere unde sportivii nu mai au număr pe tricou) trebuie să fie **opționale (nullable)**.
   - Adaugă câmpul `photo_category` cu valorile: `'atmosfera'` (arenă, pregătiri, voluntari), `'start_finish'`, `'traseu'`, `'premiere'`.
@@ -83,3 +86,11 @@ Te rog să îmi oferi:
   4. `src/pages/`: Rute curate care doar apelează serviciile din `src/services/` și pasează datele către componentele din `src/modules/`. Nu scrie interogări SQL direct în fișierele `.astro` din `pages/`.
 - Centralizează toate constantele (numele clubului, căile de stocare, categoriile foto) într-un singur fișier `src/config/club.config.ts`.
 
+### 9. Modul Hărți Hibride: Automată (KMZ/GPX) + Manuală (Hărți Scanate & Desenare Traseu)
+- **Suport Multi-Format în Baza de Date:**
+  - În tabela `competitions`, adaugă câmpurile: `map_source_type` (`'kmz'`, `'scanned_image'`, `'none'`), `map_image_path`, `kmz_file_path`, `map_corners_json` (coordonatele celor 4 colțuri georeferențiate) și `official_course_geojson` (traseul oficial cu posturi).
+- **Editor Calibrare Manuală în AdminLTE (`/admin/concursuri/[id]/calibrare-harta`):**
+  - Integrează `Leaflet.js` cu `Leaflet.DistortableImage` pentru a permite administratorului să încarce o hartă veche scanată (JPG/PNG), să o suprapună peste harta reală (OSM/Satelit), să o rotească/redimensioneze tragând de cele 4 colțuri până la suprapunerea exactă și să salveze coordonatele colțurilor în SQLite (`map_corners_json`).
+  - Integrează `Leaflet.Draw` în același editor pentru a permite administratorului să deseneze manual prin click-uri pe hartă traseul oficial (Start -> Posturi -> Finish) sau ruta unui sportiv atunci când nu există fișier GPS, salvând rezultatul ca GeoJSON.
+- **Randare Unificată pe Site-ul Public și Profilul Sportivului:**
+  - Componenta `HartaOrientare.astro` trebuie să detecteze automat tipul hărții: dacă este `kmz`, o randează prin `leaflet-kmz`; dacă este `scanned_image`, o randează folosind coordonatele salvate în `map_corners_json` + stratul `official_course_geojson`. În ambele cazuri, utilizatorul are un slider de opacitate (0% - 100%) pentru a compara harta de orientare cu terenul real.
