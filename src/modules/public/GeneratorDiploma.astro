@@ -1,0 +1,164 @@
+---
+interface Props {
+  athleteName: string;
+  competitionTitle: string;
+  edition?: string | null;
+  date: string;
+  location: string;
+  raceName?: string | null;
+  category?: string | null;
+  finishTime?: string | null;
+  rankOverall?: number | null;
+  rankCategory?: number | null;
+  templateImageUrl?: string | null;
+}
+
+const props = Astro.props;
+const btnId = `diploma-btn-${Math.random().toString(36).substring(2, 9)}`;
+---
+
+<button
+  id={btnId}
+  type="button"
+  class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-500/15 text-amber-800 border border-amber-500/30 hover:bg-amber-500/25 transition-colors cursor-pointer"
+  data-diploma={JSON.stringify(props)}
+>
+  <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+  Descarcă Diploma PDF
+</button>
+
+<script>
+  import { jsPDF } from 'jspdf';
+
+  // Funcție helper pentru a elimina diacriticele în PDF (fonturile standard PDF nu suportă ș/ț nativ fără font custom)
+  function stripDiacritics(str: string): string {
+    return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+
+  document.addEventListener('click', async (e) => {
+    const target = (e.target as HTMLElement).closest('button[data-diploma]') as HTMLButtonElement | null;
+    if (!target) return;
+
+    const rawData = target.dataset.diploma;
+    if (!rawData) return;
+
+    const data = JSON.parse(rawData);
+    const originalText = target.innerHTML;
+    target.textContent = 'Se generează PDF...';
+    target.disabled = true;
+
+    try {
+      // Inițializăm document A4 Landscape (297mm x 210mm)
+      const doc = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4',
+      });
+
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+
+      // 1. Dacă există șablon grafic încărcat pentru această ediție, îl punem pe tot fundalul
+      if (data.templateImageUrl) {
+        const img = new Image();
+        img.crossOrigin = 'Anonymous';
+        img.src = data.templateImageUrl;
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = reject;
+        });
+        doc.addImage(img, 'JPEG', 0, 0, pageWidth, pageHeight);
+      } else {
+        // 2. Design implicit elegant (pentru concursurile fără șablon grafic custom)
+        doc.setDrawColor(16, 185, 129); // Verde smarald
+        doc.setLineWidth(2);
+        doc.rect(10, 10, pageWidth - 20, pageHeight - 20);
+
+        doc.setDrawColor(203, 213, 225);
+        doc.setLineWidth(0.5);
+        doc.rect(13, 13, pageWidth - 26, pageHeight - 26);
+
+        // Antet Club
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(14);
+        doc.setTextColor(15, 23, 42);
+        doc.text('ASOCIATIA CLUB SPORTIV SANATATEA PLOIESTI', pageWidth / 2, 30, { align: 'center' });
+
+        // Titlu Diplomă
+        doc.setFontSize(34);
+        doc.setTextColor(5, 150, 105);
+        doc.text('DIPLOMA DE PARTICIPARE', pageWidth / 2, 52, { align: 'center' });
+      }
+
+      // 3. Textul dinamic (centrat pe pagină)
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(14);
+      doc.setTextColor(71, 85, 105);
+      doc.text('Se acorda sportivului / sportivei', pageWidth / 2, 75, { align: 'center' });
+
+      // Numele Sportivului
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(26);
+      doc.setTextColor(15, 23, 42);
+      doc.text(stripDiacritics(data.athleteName).toUpperCase(), pageWidth / 2, 90, { align: 'center' });
+
+      // Detalii Competiție
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(13);
+      doc.setTextColor(51, 65, 85);
+      const compFullTitle = `${data.competitionTitle}${data.edition ? ` (${data.edition})` : ''}`;
+      doc.text(
+        `pentru parcurgerea traseului la competitia "${stripDiacritics(compFullTitle)}"`,
+        pageWidth / 2,
+        106,
+        { align: 'center' }
+      );
+
+      doc.text(
+        `Data: ${data.date}  |  Locatia: ${stripDiacritics(data.location)}`,
+        pageWidth / 2,
+        115,
+        { align: 'center' }
+      );
+
+      // Rezultatul obținut (chenar evidențiat)
+      doc.setFillColor(248, 250, 252);
+      doc.roundedRect(55, 126, pageWidth - 110, 32, 3, 3, 'F');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.setTextColor(15, 23, 42);
+
+      const line1 = `Proba: ${stripDiacritics(data.raceName || 'General')}   |   Categoria: ${stripDiacritics(data.category || 'Open')}`;
+      const rankText = data.rankCategory
+        ? `Loc Categorie: ${data.rankCategory}`
+        : data.rankOverall
+        ? `Loc Open: ${data.rankOverall}`
+        : 'Finisher';
+      const line2 = `Timp Oficial: ${data.finishTime || '-'}   |   Clasament: ${rankText}`;
+
+      doc.text(line1, pageWidth / 2, 138, { align: 'center' });
+      doc.text(line2, pageWidth / 2, 149, { align: 'center' });
+
+      // Subsol
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(10);
+      doc.setTextColor(100, 116, 139);
+      doc.text('Document generat din Arhiva Oficiala A.C.S. Sanatatea Ploiesti', pageWidth / 2, 185, {
+        align: 'center',
+      });
+
+      // Salvăm fișierul PDF
+      const safeFileName = `Diploma_${stripDiacritics(data.athleteName).replace(/\s+/g, '_')}_${data.date}.pdf`;
+      doc.save(safeFileName);
+    } catch (err) {
+      console.error('Eroare la generarea diplomei PDF:', err);
+      alert('A apărut o eroare la generarea diplomei. Te rugăm să încerci din nou.');
+    } finally {
+      target.innerHTML = originalText;
+      target.disabled = false;
+    }
+  });
+</script>
