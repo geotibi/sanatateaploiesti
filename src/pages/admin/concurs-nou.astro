@@ -1,0 +1,222 @@
+---
+export const prerender = false;
+
+import Layout from '../../layouts/Layout.astro';
+import { CLUB_CONFIG } from '../../config/club.config';
+import { CompetitionService } from '../../services/competition.service';
+
+let errorMessage = '';
+
+if (Astro.request.method === 'POST') {
+  try {
+    const formData = await Astro.request.formData();
+
+    const title = String(formData.get('title') || '').trim();
+    const edition = String(formData.get('edition') || '').trim() || null;
+    const date = String(formData.get('date') || '').trim();
+    const location = String(formData.get('location') || '').trim();
+    const status = (String(formData.get('status') || 'completed') as 'upcoming' | 'completed' | 'cancelled');
+    const distanceRaw = String(formData.get('distanceKm') || '').trim();
+    const elevationRaw = String(formData.get('elevationGain') || '').trim();
+    const liveloxEventUrl = String(formData.get('liveloxEventUrl') || '').trim() || null;
+    const externalAlbumUrl = String(formData.get('externalAlbumUrl') || '').trim() || null;
+    const description = String(formData.get('description') || '').trim() || null;
+    const organizerNotes = String(formData.get('organizerNotes') || '').trim() || null;
+
+    if (!title || !date || !location) {
+      errorMessage = 'Titlul, data și locația sunt obligatorii.';
+    } else {
+      const year = date.slice(0, 4);
+      const baseSlug = `${title}-${edition || year}`
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+
+      const created = await CompetitionService.createCompetition({
+        slug: `${baseSlug}-${Date.now().toString(36).slice(-4)}`,
+        title,
+        edition,
+        date,
+        location,
+        status,
+        distanceKm: distanceRaw ? parseFloat(distanceRaw) : null,
+        elevationGain: elevationRaw ? parseInt(elevationRaw, 10) : null,
+        liveloxEventUrl,
+        externalAlbumUrl,
+        description,
+        organizerNotes,
+      });
+
+      return Astro.redirect(`/admin/concurs/${created.id}`);
+    }
+  } catch (err: any) {
+    errorMessage = err?.message || 'Eroare la salvarea competiției.';
+  }
+}
+---
+
+<Layout title={`Adaugă Competiție | ${CLUB_CONFIG.numeScurt}`}>
+  <header class="bg-slate-950 text-white border-b border-slate-800">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+      <a href="/admin" class="text-xs font-semibold text-slate-300 hover:text-white transition-colors">
+        &larr; Înapoi la Panoul Admin
+      </a>
+      <span class="text-xs font-mono text-emerald-400 uppercase">Ediție Nouă</span>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto w-full px-4 sm:px-6 py-8 flex-1">
+    <div class="bg-white rounded-xl border border-slate-200 p-6 sm:p-8 shadow-sm">
+      <h1 class="text-xl font-extrabold text-slate-900 mb-1">Adaugă o Competiție în Arhivă</h1>
+      <p class="text-xs text-slate-500 mb-6">
+        Completează datele de bază ale evenimentului. După salvare vei putea importa rezultatele CSV, harta KMZ și fotografiile.
+      </p>
+
+      {errorMessage && (
+        <div class="mb-6 p-3.5 rounded-lg bg-red-50 border border-red-200 text-xs font-semibold text-red-700">
+          {errorMessage}
+        </div>
+      )}
+      <form method="POST" class="space-y-6">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="sm:col-span-2">
+            <label class="block text-xs font-bold text-slate-700 mb-1">Numele Competiției *</label>
+            <input
+              type="text"
+              name="title"
+              required
+              placeholder="ex: Cupa Sănătatea la Orientare"
+              class="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Ediția</label>
+            <input
+              type="text"
+              name="edition"
+              placeholder="ex: Ediția a XII-a"
+              class="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Data desfășurării *</label>
+            <input
+              type="date"
+              name="date"
+              required
+              class="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Locația *</label>
+            <input
+              type="text"
+              name="location"
+              required
+              placeholder="ex: Pădurea Păulești, Prahova"
+              class="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Status</label>
+            <select
+              name="status"
+              class="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm bg-white focus:outline-none focus:border-emerald-500"
+            >
+              <option value="completed">Finalizat (Arhivat)</option>
+              <option value="upcoming">Viitor (Înscrieri / Listă start)</option>
+              <option value="cancelled">Anulat</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Distanță estimată (km)</label>
+            <input
+              type="number"
+              step="0.1"
+              name="distanceKm"
+              placeholder="ex: 8.5"
+              class="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Diferență de nivel (+m)</label>
+            <input
+              type="number"
+              name="elevationGain"
+              placeholder="ex: 240"
+              class="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Link Livelox (opțional)</label>
+            <input
+              type="url"
+              name="liveloxEventUrl"
+              placeholder="https://livelox.com..."
+              class="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Link Album Foto Extern (opțional)</label>
+            <input
+              type="url"
+              name="externalAlbumUrl"
+              placeholder="https://google.com..."
+              class="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Descriere publică (vizibilă pe site)</label>
+          <textarea
+            name="description"
+            rows="3"
+            placeholder="Detalii despre teren, categorii, condiții meteo..."
+            class="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:border-emerald-500"
+          ></textarea>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-amber-800 mb-1">
+            Note interne ale organizatorului (confidențiale — apar doar în Fișa Print A4 pentru dosarul clubului)
+          </label>
+          <textarea
+            name="organizerNotes"
+            rows="3"
+            placeholder="Sponsori, observații logistice, arbitri, incidente..."
+            class="w-full px-3.5 py-2 rounded-lg border border-amber-300 bg-amber-50/40 text-sm focus:outline-none focus:border-amber-500"
+          ></textarea>
+        </div>
+
+        <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+          <a href="/admin" class="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100">
+            Anulează
+          </a>
+          <button
+            type="submit"
+            class="px-5 py-2.5 rounded-lg text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-500 transition-colors cursor-pointer"
+          >
+            Salvează și continuă la Rezultate & Foto &rarr;
+          </button>
+        </div>
+      </form>
+    </div>
+  </main>
+</Layout>
