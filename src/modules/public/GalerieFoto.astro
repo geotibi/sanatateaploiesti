@@ -1,0 +1,261 @@
+---
+import { CLUB_CONFIG } from '../../config/club.config';
+
+interface PhotoItem {
+  id: number;
+  webPath: string;
+  thumbnailPath: string;
+  photoCategory: 'atmosfera' | 'start_finish' | 'traseu' | 'premiere';
+  caption?: string | null;
+  bibNumbers?: string | null;
+}
+
+interface Props {
+  photos: PhotoItem[];
+  externalAlbumUrl?: string | null;
+  galleryId?: string;
+}
+
+const {
+  photos = [],
+  externalAlbumUrl,
+  galleryId = `gallery-${Math.random().toString(36).substring(2, 9)}`,
+} = Astro.props;
+
+// Calculăm câte poze sunt în fiecare categorie pentru a afișa contorul pe butoane
+const categoryCounts = CLUB_CONFIG.categoriiFoto.map((cat) => ({
+  ...cat,
+  count: photos.filter((p) => p.photoCategory === cat.id).length,
+}));
+---
+
+<div id={galleryId} class="space-y-6">
+  <!-- Bara de filtre și link album extern -->
+  <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
+    <div class="flex flex-wrap items-center gap-2" role="tablist">
+      <button
+        type="button"
+        data-filter="all"
+        class="filter-btn active px-3.5 py-1.5 rounded-full text-xs font-semibold bg-emerald-600 text-white transition-colors cursor-pointer"
+      >
+        Toate ({photos.length})
+      </button>
+
+      {categoryCounts.map(
+        (cat) =>
+          cat.count > 0 && (
+            <button
+              type="button"
+              data-filter={cat.id}
+              class="filter-btn px-3.5 py-1.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer"
+            >
+              {cat.label} ({cat.count})
+            </button>
+          )
+      )}
+    </div>
+
+    {externalAlbumUrl && (
+      <a
+        href={externalAlbumUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 text-white hover:bg-slate-800 transition-colors"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+          />
+        </svg>
+        Vezi albumul complet extern
+      </a>
+    )}
+  </div>
+
+  <!-- Grid Fotografi -->
+  {photos.length === 0 ? (
+    <div class="text-center py-12 bg-slate-50 rounded-xl border border-dashed border-slate-300">
+      <p class="text-sm text-slate-500">Nu există fotografii încărcate pentru această selecție.</p>
+    </div>
+  ) : (
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 photo-grid">
+      {photos.map((photo, index) => (
+        <div
+          class="photo-card group relative aspect-[4/3] rounded-xl overflow-hidden bg-slate-100 border border-slate-200 cursor-pointer shadow-sm hover:shadow-md transition-all"
+          data-category={photo.photoCategory}
+          data-index={index}
+          data-web-src={photo.webPath}
+          data-caption={photo.caption || ''}
+          data-bibs={photo.bibNumbers || ''}
+        >
+          <img
+            src={photo.thumbnailPath}
+            alt={photo.caption || 'Fotografie eveniment ACS Sănătatea Ploiești'}
+            loading="lazy"
+            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+
+          <!-- Overlay subtil la hover -->
+          <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
+            {photo.caption && (
+              <p class="text-xs font-medium text-white line-clamp-2">{photo.caption}</p>
+            )}
+            {photo.bibNumbers && (
+              <span class="mt-1 inline-block text-[10px] font-mono bg-emerald-500/90 text-white px-1.5 py-0.5 rounded w-fit">
+                Bib: {photo.bibNumbers}
+              </span>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  )}
+
+  <!-- Lightbox Modal (Vizualizare pe tot ecranul) -->
+  <div
+    id={`lightbox-${galleryId}`}
+    class="fixed inset-0 z-50 hidden bg-slate-950/95 backdrop-blur-sm flex items-center justify-center p-4"
+    aria-hidden="true"
+  >
+    <!-- Buton Închidere -->
+    <button
+      type="button"
+      class="lb-close absolute top-4 right-4 text-slate-300 hover:text-white p-2 rounded-full bg-slate-900/80 hover:bg-slate-800 transition-colors cursor-pointer"
+      aria-label="Închide"
+    >
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+
+    <!-- Buton Anterior -->
+    <button
+      type="button"
+      class="lb-prev absolute left-4 text-slate-300 hover:text-white p-3 rounded-full bg-slate-900/80 hover:bg-slate-800 transition-colors cursor-pointer"
+      aria-label="Anterior"
+    >
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+      </svg>
+    </button>
+
+    <!-- Imaginea Mărită & Descriere -->
+    <div class="max-w-5xl max-h-[88vh] flex flex-col items-center">
+      <img
+        src=""
+        alt=""
+        class="lb-img max-h-[78vh] w-auto object-contain rounded-lg shadow-2xl"
+      />
+      <div class="mt-3 text-center">
+        <p class="lb-caption text-sm font-medium text-white"></p>
+        <p class="lb-bibs text-xs text-emerald-400 font-mono mt-1"></p>
+      </div>
+    </div>
+
+    <!-- Buton Următor -->
+    <button
+      type="button"
+      class="lb-next absolute right-4 text-slate-300 hover:text-white p-3 rounded-full bg-slate-900/80 hover:bg-slate-800 transition-colors cursor-pointer"
+      aria-label="Următor"
+    >
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+      </svg>
+    </button>
+  </div>
+</div>
+
+<script is:inline define:vars={{ galleryId }}>
+  document.addEventListener('DOMContentLoaded', () => {
+    const root = document.getElementById(galleryId);
+    if (!root) return;
+
+    const filterButtons = root.querySelectorAll('.filter-btn');
+    const photoCards = Array.from(root.querySelectorAll('.photo-card'));
+    const lightbox = document.getElementById(`lightbox-${galleryId}`);
+    if (!lightbox) return;
+
+    const lbImg = lightbox.querySelector('.lb-img');
+    const lbCaption = lightbox.querySelector('.lb-caption');
+    const lbBibs = lightbox.querySelector('.lb-bibs');
+    const btnClose = lightbox.querySelector('.lb-close');
+    const btnPrev = lightbox.querySelector('.lb-prev');
+    const btnNext = lightbox.querySelector('.lb-next');
+
+    let visibleCards = [...photoCards];
+    let currentIndex = 0;
+
+    // 1. Filtrare pe categorii
+    filterButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const selectedCategory = btn.dataset.filter;
+
+        // Actualizăm stilul butoanelor
+        filterButtons.forEach((b) => {
+          b.classList.remove('bg-emerald-600', 'text-white');
+          b.classList.add('bg-slate-100', 'text-slate-700');
+        });
+        btn.classList.remove('bg-slate-100', 'text-slate-700');
+        btn.classList.add('bg-emerald-600', 'text-white');
+
+        // Afișăm/ascundem cardurile
+        visibleCards = [];
+        photoCards.forEach((card) => {
+          if (selectedCategory === 'all' || card.dataset.category === selectedCategory) {
+            card.classList.remove('hidden');
+            visibleCards.push(card);
+          } else {
+            card.classList.add('hidden');
+          }
+        });
+      });
+    });
+
+    // 2. Logica Lightbox
+    function openLightbox(index) {
+      if (visibleCards.length === 0) return;
+      currentIndex = (index + visibleCards.length) % visibleCards.length;
+      const card = visibleCards[currentIndex];
+
+      lbImg.src = card.dataset.webSrc;
+      lbCaption.textContent = card.dataset.caption || '';
+      lbBibs.textContent = card.dataset.bibs ? `Numere concurs: ${card.dataset.bibs}` : '';
+
+      lightbox.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeLightbox() {
+      lightbox.classList.add('hidden');
+      lbImg.src = '';
+      document.body.style.overflow = '';
+    }
+
+    photoCards.forEach((card) => {
+      card.addEventListener('click', () => {
+        const idx = visibleCards.indexOf(card);
+        if (idx !== -1) openLightbox(idx);
+      });
+    });
+
+    btnClose.addEventListener('click', closeLightbox);
+    btnPrev.addEventListener('click', () => openLightbox(currentIndex - 1));
+    btnNext.addEventListener('click', () => openLightbox(currentIndex + 1));
+
+    // Închidere la click pe fundal
+    lightbox.addEventListener('click', (e) => {
+      if (e.target === lightbox) closeLightbox();
+    });
+
+    // Navigare din tastatură (ESC, Săgeată Stânga, Săgeată Dreapta)
+    document.addEventListener('keydown', (e) => {
+      if (lightbox.classList.contains('hidden')) return;
+      if (e.key === 'Escape') closeLightbox();
+      if (e.key === 'ArrowLeft') openLightbox(currentIndex - 1);
+      if (e.key === 'ArrowRight') openLightbox(currentIndex + 1);
+    });
+  });
+</script>
