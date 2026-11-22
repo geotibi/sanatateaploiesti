@@ -23,20 +23,105 @@ export class CompetitionService {
   /**
    * Convertește un timp text ("01:24:15" sau "42:10") în secunde totale
    */
-  static parseTimeToSeconds(timeStr?: string | null): number | null {
+  static parseTimeToSeconds(timeStr: string | null): number | null {
     if (!timeStr) return null;
-    const clean = timeStr.trim();
-    const parts = clean.split(':').map(Number);
+    const parts = timeStr.trim().split(':').map(Number);
     if (parts.some(isNaN)) return null;
-
-    if (parts.length === 3) {
-      return parts[0] * 3600 + parts[1] * 60 + parts[2];
-    }
-    if (parts.length === 2) {
-      return parts[0] * 60 + parts[1];
-    }
+    if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+    if (parts.length === 2) return parts[0] * 60 + parts[1];
     return null;
   }
+
+  static formatSecondsToTime(totalSec: number): string {
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    return [h, m, s].map((v) => String(v).padStart(2, '0')).join(':');
+  }
+
+  static async getSeriesDetails(parentId: number) {
+    // 1. Preluăm toate etapele care aparțin acestui eveniment părinte
+    const stages = await db.query.competitions.findMany({
+      where: eq(competitions.parentId, parentId),
+    });
+    stages.sort((a, b) => (a.stageNumber || 0) - (b.stageNumber || 0));
+
+    // 2. Preluăm toate rezultatele din aceste etape
+    const stageResultsMap = new Map<number, any[]>();
+    for (const st of stages) {
+      const rows = await db
+        .select({ result: results, athlete: athletes })
+        .from(results)
+        .innerJoin(athletes, eq(results.athleteId, athletes.id))
+        .where(eq(results.competitionId, st.id));
+      stageResultsMap.set(st.stageNumber || 0, rows);
+    }
+
+    return { stages, stageResultsMap };
+  }
+
+  static calculateCumulativeStandings(
+    stagesToInclude: number[],
+    stageResultsMap: Map<number, any[]>
+  ) {
+    // Cheie: `${athleteId}__${category}`
+    const tracker = new Map<
+      string,
+      { athlete: any; category: string; raceName: string; totalSec: number; completedStages: number; breakdown: Record<number, string> }
+    >();
+
+    for (const stageNum of stagesToInclude) {
+      const rows = stageResultsMap.get(stageNum) || [];
+      for (const { result, athlete } of rows) {
+        if (result.status !== 'finished') continue;
+        const sec = this.parseTimeToSeconds(result.finishTime);
+        if (sec === null) continue;
+
+        const cat = result.category || 'Open';
+        const key = `${athlete.id}__${cat}`;
+
+        if (!tracker.has(key)) {
+          tracker.set(key, {
+            athlete,
+            category: cat,
+            raceName: result.raceName || '',
+            totalSec: 0,
+            completedStages: 0,
+            breakdown: {},
+          });
+        }
+
+        const entry = tracker.get(key)!;
+        entry.totalSec += sec;
+        entry.completedStages += 1;
+        entry.breakdown[stageNum] = result.finishTime!;
+      }
+    }
+
+    // Păstrăm doar sportivii care au terminat TOATE etapele cerute de formulă
+    const eligible = Array.from(tracker.values()).filter(
+      (e) => e.completedStages === stagesToInclude.length
+    );
+
+    // Sortăm după categorie, apoi crescător după timpul total cumulat
+    eligible.sort((a, b) => {
+      if (a.category !== b.category) return a.category.localeCompare(b.category, 'ro');
+      return a.totalSec - b.totalSec;
+    });
+
+    // Calculăm locul pe categorie
+    const rankCounter = new Map<string, number>();
+    return eligible.map((item) => {
+      const nextRank = (rankCounter.get(item.category) || 0) + 1;
+      rankCounter.set(item.category, nextRank);
+      return {
+        ...item,
+        rankCategory: nextRank,
+        totalTimeFormatted: this.formatSecondsToTime(item.totalSec),
+      };
+    });
+  }
+
 
   /**
    * Listează toate concursurile ordonate cronologic (cele mai recente primele)
