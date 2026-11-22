@@ -165,7 +165,7 @@ export class CompetitionService {
       photos,
     };
   }
-    static async getCompetitionById(id: number) {
+  static async getCompetitionById(id: number) {
     const comp = await db.query.competitions.findFirst({
       where: eq(competitions.id, id),
     });
@@ -174,15 +174,15 @@ export class CompetitionService {
 
     const compResults = await db
       .select({
-        result: results,
+        result: registrationsAndResults,
         athlete: athletes,
       })
-      .from(results)
-      .innerJoin(athletes, eq(results.athleteId, athletes.id))
-      .where(eq(results.competitionId, comp.id));
+      .from(registrationsAndResults)
+      .innerJoin(athletes, eq(registrationsAndResults.athleteId, athletes.id))
+      .where(eq(registrationsAndResults.competitionId, comp.id));
 
-    const compPhotos = await db.query.photos.findMany({
-      where: eq(photos.competitionId, comp.id),
+    const compPhotos = await db.query.competitionPhotos.findMany({
+      where: eq(competitionPhotos.competitionId, comp.id),
     });
 
     return {
@@ -191,6 +191,7 @@ export class CompetitionService {
       photos: compPhotos,
     };
   }
+
 
   /**
    * Creează un concurs nou și face backup automat la baza de date
