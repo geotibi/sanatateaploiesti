@@ -16,6 +16,8 @@ if (Astro.request.method === 'POST') {
     const formData = await Astro.request.formData();
 
     const title = String(formData.get('title') || '').trim();
+    const parentIdRaw = String(formData.get('parentId') || '').trim();
+    const stageNumberRaw = String(formData.get('stageNumber') || '').trim();
     const edition = String(formData.get('edition') || '').trim() || null;
     const date = String(formData.get('date') || '').trim();
     const location = String(formData.get('location') || '').trim();
