@@ -213,6 +213,31 @@ if (!competition) return Astro.redirect('/admin');
       </section>
     </div>
     <!-- 3. Upload Galerie Foto -->
+{!competition.parentId && (
+  <section class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4">
+    <div class="flex items-center justify-between">
+      <h2 class="text-base font-extrabold text-slate-900">4. Clasamente Cumulate (pentru Competiții Multi-Etapă)</h2>
+      <span class="text-xs text-slate-500">Definește combinațiile de etape premiate</span>
+    </div>
+
+    <form method="POST" class="space-y-3 text-xs">
+      <input type="hidden" name="action" value="save_cumulative" />
+      <p class="text-slate-500">
+        Exemplu format: <code class="bg-slate-100 px-1">[{"id":"gen","titlu":"General (1-5)","etape":},{"id":"124","titlu":"Cumulat 1+2+4","etape":}]</code>
+      </p>
+      <textarea
+        name="cumulativeRulesJson"
+        rows="4"
+        placeholder='[{"id":"gen","titlu":"Clasament General (Etapele 1-5)","etape":}]'
+        class="w-full p-3 rounded-lg border border-slate-300 font-mono text-xs"
+      >{competition.cumulativeRulesJson || ''}</textarea>
+      <button type="submit" class="px-4 py-2 rounded-lg font-bold bg-emerald-600 text-white hover:bg-emerald-500 cursor-pointer">
+        Salvează Regulile de Cumulat
+      </button>
+    </form>
+  </section>
+)}
+
     <section class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4">
       <div class="flex items-center justify-between">
         <h2 class="text-base font-extrabold text-slate-900">3. Încărcare Fotografii Eveniment ({competition.photos.length} în arhivă)</h2>
