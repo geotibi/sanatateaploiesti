@@ -26,7 +26,12 @@ export const competitions = sqliteTable('competitions', {
   status: text('status', { enum: ['upcoming', 'completed', 'cancelled'] })
     .notNull()
     .default('completed'),
-  
+  // În interiorul tabelului competitions = sqliteTable('competitions', { ... }) adaugă:
+
+  parentId: integer('parent_id'), // ID-ul evenimentului părinte (null dacă e eveniment principal / individual)
+  stageNumber: integer('stage_number'), // Ex: 1, 2, 3, 4, 5 (numărul etapei)
+  cumulativeRulesJson: text('cumulative_rules_json'), // JSON cu formulele de cumulat (ex: [{"id":"gen","titlu":"General 1-5","etape":[1,2,3,4,5]}])
+
   // Detalii tehnice & descriere
   distanceKm: real('distance_km'),
   elevationGain: integer('elevation_gain'),
