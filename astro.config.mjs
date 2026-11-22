@@ -11,7 +11,7 @@ export default defineConfig({
   integrations: [
     tailwind({
       // Dezactivăm stilurile globale de bază ale Tailwind ca să nu intre în conflict cu AdminLTE/Bootstrap pe rutele de admin
-      applyBaseStyles: false,
+      applyBaseStyles: true,
     }),
   ],
   server: {
