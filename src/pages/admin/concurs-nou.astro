@@ -43,6 +43,8 @@ if (Astro.request.method === 'POST') {
       const created = await CompetitionService.createCompetition({
         slug: `${baseSlug}-${Date.now().toString(36).slice(-4)}`,
         title,
+        parentId: parentIdRaw ? Number(parentIdRaw) : null,
+        stageNumber: stageNumberRaw ? Number(stageNumberRaw) : null,
         edition,
         date,
         location,
@@ -86,6 +88,30 @@ if (Astro.request.method === 'POST') {
         </div>
       )}
       <form method="POST" class="space-y-6">
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-lg bg-slate-50 border border-slate-200">
+  <div class="sm:col-span-2">
+    <label class="block text-xs font-bold text-slate-700 mb-1">
+      Aparține de un Eveniment Părinte (Multi-etapă) — opțional
+    </label>
+    <select name="parentId" class="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm bg-white">
+      <option value="">-- Eveniment independent (sau Eveniment Părinte) --</option>
+      {parentEvents.map((ev) => (
+        <option value={ev.id}>{ev.title} ({ev.date})</option>
+      ))}
+    </select>
+  </div>
+  <div>
+    <label class="block text-xs font-bold text-slate-700 mb-1">Număr Etapă (ex: 1, 2, 3...)</label>
+    <input
+      type="number"
+      name="stageNumber"
+      min="1"
+      placeholder="ex: 1"
+      class="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm bg-white"
+    />
+  </div>
+</div>
+
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div class="sm:col-span-2">
             <label class="block text-xs font-bold text-slate-700 mb-1">Numele Competiției *</label>
