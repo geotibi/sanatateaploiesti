@@ -7,6 +7,10 @@ import { CompetitionService } from '../../services/competition.service';
 
 let errorMessage = '';
 
+const allComps = await CompetitionService.getAllCompetitions();
+const parentEvents = allComps.filter((c) => !c.parentId);
+
+
 if (Astro.request.method === 'POST') {
   try {
     const formData = await Astro.request.formData();
