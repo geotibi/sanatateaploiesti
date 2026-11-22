@@ -4,6 +4,8 @@
   "version": "1.0.0",
   "description": "Arhiva digitală și fizică a Asociației Club Sportiv Sănătatea Ploiești",
   "scripts": {
+    "postinstall": "npm run db:push",
+    "predev": "npm run db:push",
     "dev": "astro dev",
     "start": "astro dev",
     "build": "astro build",
