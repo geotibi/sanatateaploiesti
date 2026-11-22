@@ -27,6 +27,16 @@ if (Astro.request.method === 'POST') {
         feedback = { type: 'success', message: `Au fost importați/actualizați ${count} participanți.` };
       }
     }
+if (action === 'save_cumulative') {
+  const rulesRaw = String(formData.get('cumulativeRulesJson') || '').trim();
+  if (rulesRaw) {
+    JSON.parse(rulesRaw); // validează că este JSON corect
+  }
+  await CompetitionService.updateCompetition(id, {
+    cumulativeRulesJson: rulesRaw || null,
+  });
+  feedback = { type: 'success', message: 'Regulile de clasament cumulat au fost salvate.' };
+}
 
     if (action === 'upload_assets') {
       const updates: Record<string, any> = {};
