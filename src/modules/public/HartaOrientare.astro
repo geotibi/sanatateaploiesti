@@ -1,4 +1,6 @@
 ---
+import 'leaflet/dist/leaflet.css';
+
 interface Props {
   mapId?: string;
   mapSourceType: 'kmz' | 'scanned_image' | 'none';
@@ -56,6 +58,7 @@ const {
 
     <!-- Containerul Hărții Leaflet -->
     <div
+      data-orienteering-map={mapId}
       id={mapId}
       class="w-full h-[460px] z-0"
       data-source-type={mapSourceType}
@@ -67,109 +70,132 @@ const {
   </div>
 )}
 
-<!-- Stiluri și scripturi Leaflet + plugin leaflet-kmz -->
-<link rel="stylesheet" href="https://unpkg.com" />
-<script is:inline src="https://unpkg.com"></script>
-<script is:inline src="https://unpkg.com"></script>
+<script>
+  import L from 'leaflet';
+  import JSZip from 'jszip';
 
-<script is:inline define:vars={{ mapId }}>
-  document.addEventListener('DOMContentLoaded', () => {
-    const container = document.getElementById(mapId);
-    if (!container || typeof L === 'undefined') return;
+  document.addEventListener('DOMContentLoaded', async () => {
+    const containers = document.querySelectorAll<HTMLElement>('[data-orienteering-map]');
 
-    const sourceType = container.dataset.sourceType;
-    const kmzUrl = container.dataset.kmz;
-    const imageUrl = container.dataset.image;
-    const cornersRaw = container.dataset.corners;
-    const geojsonRaw = container.dataset.geojson;
+    for (const container of containers) {
+      const mapId = container.id;
+      const sourceType = container.dataset.sourceType;
+      const kmzUrl = container.dataset.kmz;
+      const imageUrl = container.dataset.image;
+      const cornersRaw = container.dataset.corners;
+      const geojsonRaw = container.dataset.geojson;
 
-    // 1. Inițializăm harta centrându-ne implicit pe zona Ploiești
-    const map = L.map(mapId).setView([44.9412, 26.0225], 13);
+      // 1. Inițializăm harta centrându-ne implicit pe zona Ploiești
+      const map = L.map(mapId).setView([44.9412, 26.0225], 13);
 
-    // Straturi de bază (OpenStreetMap + Satelit Esri)
-    const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap',
-      maxZoom: 19,
-    }).addTo(map);
-
-    const satelliteLayer = L.tileLayer(
-      'https://arcgisonline.com{z}/{y}/{x}',
-      {
-        attribution: '&copy; Esri Satelit',
+      // Straturi de bază (OpenStreetMap + Satelit Esri)
+      const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap',
         maxZoom: 19,
-      }
-    );
+      }).addTo(map);
 
-    L.control.layers({ 'Hartă Stradală': osmLayer, 'Satelit': satelliteLayer }).addTo(map);
-
-    let orienteeringOverlay = null;
-
-    // 2. CAZUL A: Fișier KMZ din Livelox / OCAD
-    if (sourceType === 'kmz' && kmzUrl) {
-      const kmzControl = L.kmzLayer().addTo(map);
-      kmzControl.on('load', (e) => {
-        orienteeringOverlay = e.layer;
-        if (e.layer.getBounds && e.layer.getBounds().isValid()) {
-          map.fitBounds(e.layer.getBounds());
+      const satelliteLayer = L.tileLayer(
+        'https://arcgisonline.com{z}/{y}/{x}',
+        {
+          attribution: '&copy; Esri Satelit',
+          maxZoom: 19,
         }
-      });
-      kmzControl.load(kmzUrl);
-    }
+      );
 
-    // 3. CAZUL B: Hartă veche scanată + calibrată manual (coordonate colțuri)
-    if (sourceType === 'scanned_image' && imageUrl && cornersRaw) {
-      try {
-        const corners = JSON.parse(cornersRaw);
-        // corners conține coordonatele [lat, lng] pentru colțurile hărții
-        const bounds = L.latLngBounds(corners);
-        orienteeringOverlay = L.imageOverlay(imageUrl, bounds, { opacity: 0.85 }).addTo(map);
-        map.fitBounds(bounds);
-      } catch (err) {
-        console.error('Eroare la parsarea coordonatelor hărții scanate:', err);
-      }
-    }
+      L.control.layers({ 'Hartă Stradală': osmLayer, 'Satelit': satelliteLayer }).addTo(map);
 
-    // 4. Traseul oficial sau ruta sportivului în format GeoJSON (dacă există)
-    if (geojsonRaw) {
-      try {
-        const geojsonData = JSON.parse(geojsonRaw);
-        const routeLayer = L.geoJSON(geojsonData, {
-          style: {
-            color: '#d946ef', // Mov specific orientării sportive (IOF Purple)
-            weight: 4,
-            opacity: 0.9,
-          },
-        }).addTo(map);
+      let orienteeringOverlay: L.ImageOverlay | null = null;
 
-        if (!orienteeringOverlay && routeLayer.getBounds().isValid()) {
-          map.fitBounds(routeLayer.getBounds());
-        }
-      } catch (err) {
-        console.error('Eroare la parsarea traseului GeoJSON:', err);
-      }
-    }
+      // 2. CAZUL A: Fișier KMZ din Livelox / OCAD / Purple Pen
+      if (sourceType === 'kmz' && kmzUrl) {
+        try {
+          const res = await fetch(kmzUrl);
+          const blob = await res.blob();
+          const zip = await JSZip.loadAsync(blob);
+          const kmlFile = Object.values(zip.files).find((f) => f.name.toLowerCase().endsWith('.kml'));
 
-    // 5. Controlul slider-ului de transparență
-    const slider = document.getElementById(`opacity-${mapId}`);
-    const valLabel = document.getElementById(`opacity-val-${mapId}`);
-    if (slider && valLabel) {
-      slider.addEventListener('input', (e) => {
-        const opacity = parseFloat(e.target.value);
-        valLabel.textContent = `${Math.round(opacity * 100)}%`;
+          if (kmlFile) {
+            const kmlText = await kmlFile.async('string');
+            const parser = new DOMParser();
+            const xml = parser.parseFromString(kmlText, 'text/xml');
+            const groundOverlay = xml.querySelector('GroundOverlay');
 
-        if (orienteeringOverlay) {
-          if (typeof orienteeringOverlay.setOpacity === 'function') {
-            orienteeringOverlay.setOpacity(opacity);
-          } else if (orienteeringOverlay.eachLayer) {
-            // Pentru straturile KMZ care conțin multiple sub-imagini
-            orienteeringOverlay.eachLayer((subLayer) => {
-              if (typeof subLayer.setOpacity === 'function') {
-                subLayer.setOpacity(opacity);
+            if (groundOverlay) {
+              const href = groundOverlay.querySelector('Icon href')?.textContent?.trim();
+              const box = groundOverlay.querySelector('LatLonBox');
+
+              if (href && box) {
+                const north = parseFloat(box.querySelector('north')?.textContent || '0');
+                const south = parseFloat(box.querySelector('south')?.textContent || '0');
+                const east = parseFloat(box.querySelector('east')?.textContent || '0');
+                const west = parseFloat(box.querySelector('west')?.textContent || '0');
+
+                const imgEntry =
+                  zip.file(href) ||
+                  Object.values(zip.files).find((f) => f.name.endsWith(href.replace(/^\.?\//, '')));
+
+                if (imgEntry) {
+                  const imgBlob = await imgEntry.async('blob');
+                  const objectUrl = URL.createObjectURL(imgBlob);
+                  const bounds = L.latLngBounds([
+                    [south, west],
+                    [north, east],
+                  ]);
+                  orienteeringOverlay = L.imageOverlay(objectUrl, bounds, { opacity: 0.85 }).addTo(map);
+                  map.fitBounds(bounds);
+                }
               }
-            });
+            }
           }
+        } catch (err) {
+          console.error('Eroare la încărcarea fișierului KMZ:', err);
         }
-      });
+      }
+
+      // 3. CAZUL B: Hartă veche scanată + calibrată manual (coordonate colțuri)
+      if (!orienteeringOverlay && sourceType === 'scanned_image' && imageUrl && cornersRaw) {
+        try {
+          const corners = JSON.parse(cornersRaw);
+          const bounds = L.latLngBounds(corners);
+          orienteeringOverlay = L.imageOverlay(imageUrl, bounds, { opacity: 0.85 }).addTo(map);
+          map.fitBounds(bounds);
+        } catch (err) {
+          console.error('Eroare la parsarea coordonatelor hărții scanate:', err);
+        }
+      }
+
+      // 4. Traseul oficial sau ruta sportivului în format GeoJSON (dacă există)
+      if (geojsonRaw) {
+        try {
+          const geojsonData = JSON.parse(geojsonRaw);
+          const routeLayer = L.geoJSON(geojsonData, {
+            style: {
+              color: '#d946ef',
+              weight: 4,
+              opacity: 0.9,
+            },
+          }).addTo(map);
+
+          if (!orienteeringOverlay && routeLayer.getBounds().isValid()) {
+            map.fitBounds(routeLayer.getBounds());
+          }
+        } catch (err) {
+          console.error('Eroare la parsarea traseului GeoJSON:', err);
+        }
+      }
+
+      // 5. Controlul slider-ului de transparență
+      const slider = document.getElementById(`opacity-${mapId}`) as HTMLInputElement | null;
+      const valLabel = document.getElementById(`opacity-val-${mapId}`);
+      if (slider && valLabel) {
+        slider.addEventListener('input', (e) => {
+          const opacity = parseFloat((e.target as HTMLInputElement).value);
+          valLabel.textContent = `${Math.round(opacity * 100)}%`;
+          if (orienteeringOverlay) {
+            orienteeringOverlay.setOpacity(opacity);
+          }
+        });
+      }
     }
   });
 </script>
