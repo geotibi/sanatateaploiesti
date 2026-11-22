@@ -223,8 +223,9 @@ if (!competition) return Astro.redirect('/admin');
     <form method="POST" class="space-y-3 text-xs">
       <input type="hidden" name="action" value="save_cumulative" />
       <p class="text-slate-500">
-        Exemplu format: <code class="bg-slate-100 px-1">[{"id":"gen","titlu":"General (1-5)","etape":},{"id":"124","titlu":"Cumulat 1+2+4","etape":}]</code>
+        Exemplu format: <code class="bg-slate-100 px-1">{'[{"id":"gen","titlu":"General (1-5)","etape":[1,2,3,4,5]},{"id":"124","titlu":"Cumulat 1+2+4","etape":[1,2,4]}]'}</code>
       </p>
+
       <textarea
         name="cumulativeRulesJson"
         rows="4"
