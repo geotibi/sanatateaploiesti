@@ -80,6 +80,32 @@ export class CompetitionService {
       photos,
     };
   }
+    static async getCompetitionById(id: number) {
+    const comp = await db.query.competitions.findFirst({
+      where: eq(competitions.id, id),
+    });
+
+    if (!comp) return null;
+
+    const compResults = await db
+      .select({
+        result: results,
+        athlete: athletes,
+      })
+      .from(results)
+      .innerJoin(athletes, eq(results.athleteId, athletes.id))
+      .where(eq(results.competitionId, comp.id));
+
+    const compPhotos = await db.query.photos.findMany({
+      where: eq(photos.competitionId, comp.id),
+    });
+
+    return {
+      ...comp,
+      participants: compResults,
+      photos: compPhotos,
+    };
+  }
 
   /**
    * Creează un concurs nou și face backup automat la baza de date
