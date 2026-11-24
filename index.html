@@ -21,25 +21,70 @@
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between bg-grid selection:bg-emerald-500 selection:text-white">
 
-    <!-- Bara de sus -->
-    <header class="w-full border-b border-slate-800/80 bg-slate-950/60 backdrop-blur-md">
-        <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center font-extrabold text-slate-950 text-lg shadow-lg shadow-emerald-500/20">
-                    SP
-                </div>
-                <div>
-                    <span class="font-bold tracking-tight text-white block leading-none">A.C.S. Sănătatea Ploiești</span>
-                    <span class="text-xs text-emerald-400 font-medium tracking-wider uppercase">Arhiva Competițiilor</span>
+
+<!-- Bara de sus -->
+<header class="w-full border-b border-slate-800/80 bg-slate-950/60 backdrop-blur-md">
+    <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+
+        <!-- Logo + Titlu -->
+        <div class="flex items-center gap-4">
+
+            <!-- Logo club -->
+            <img
+                src="/images/logo-sanatatea.png"
+                alt="ACS Sănătatea Ploiești"
+                class="w-14 h-14 object-contain bg-white rounded-xl p-1 shadow-lg"
+            >
+
+            <!-- Flag orientare -->
+            <img
+                src="/images/flag-orientare.svg"
+                alt="Steag orientare sportivă"
+                class="w-10 h-10 object-contain"
+            >
+
+            <!-- Text -->
+            <div>
+                <span class="font-bold tracking-tight text-white block text-lg leading-none">
+                    A.C.S. Sănătatea Ploiești
+                </span>
+
+                <span class="text-xs text-emerald-400 font-medium tracking-wider uppercase">
+                    Arhiva Oficială a Competițiilor
+                </span>
+
+                <!-- Autenticitate -->
+                <div class="mt-1 flex items-center gap-1 text-xs text-slate-400">
+                    <svg class="w-3.5 h-3.5 text-emerald-400"
+                         fill="currentColor"
+                         viewBox="0 0 20 20">
+                        <path fill-rule="evenodd"
+                              d="M10 1l2.09 2.26 3.05-.37 1.42 2.73 2.83 1.19-.83 2.96L20 12l-2.42 2.23.83 2.96-2.83 1.19-1.42 2.73-3.05-.37L10 23l-2.09-2.26-3.05.37-1.42-2.73-2.83-1.19.83-2.96L0 12l2.42-2.23-.83-2.96 2.83-1.19 1.42-2.73 3.05.37L10 1z"
+                              clip-rule="evenodd"/>
+                    </svg>
+
+                    <span>Platformă oficială ACS Sănătatea Ploiești</span>
                 </div>
             </div>
+
+        </div>
+
+        <!-- Status -->
+        <div class="flex items-center gap-3">
+
+            <span class="hidden md:inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                ✓ Arhivă autentică
+            </span>
+
             <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
                 <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
                 În construcție
             </span>
-        </div>
-    </header>
 
+        </div>
+
+    </div>
+</header>
     <!-- Conținut Principal -->
     <main class="max-w-5xl mx-auto px-6 py-16 md:py-24 text-center">
         <div class="inline-block mb-6 px-4 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-sm text-slate-300">
